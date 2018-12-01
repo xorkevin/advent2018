@@ -1,21 +1,33 @@
-use std::error;
+use std::collections::HashSet;
+use std::error::Error;
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
-use std::str;
+use std::io::BufReader;
 
 const PUZZLEINPUT: &str = "input.txt";
 
-fn main() -> Result<(), Box<error::Error>> {
+fn main() -> Result<(), Box<Error>> {
     let file = File::open(PUZZLEINPUT)?;
-    let reader = io::BufReader::new(file);
-    let nums = reader
-        .lines()
-        .filter_map(|i| match i {
-            Ok(i) => i.parse::<i32>().ok(),
-            Err(_) => None,
-        }).collect::<Vec<_>>();
+    let reader = BufReader::new(file);
+
+    let mut nums = Vec::new();
+    for line in reader.lines() {
+        nums.push(line?.parse::<i32>()?);
+    }
+
     let sum = nums.iter().sum::<i32>();
     println!("{}", sum);
+
+    let mut numset = HashSet::new();
+    let mut counter = 0;
+    numset.insert(counter);
+    for i in nums.iter().cycle() {
+        counter += i;
+        if !numset.insert(counter) {
+            break;
+        }
+    }
+    println!("{}", counter);
+
     Ok(())
 }
