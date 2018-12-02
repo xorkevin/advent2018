@@ -68,11 +68,8 @@ func getTwiceThrice(line string) (bool, bool) {
 	isTwice := false
 	isThrice := false
 	for _, v := range seen {
-		if v == 2 {
-			isTwice = true
-		} else if v == 3 {
-			isThrice = true
-		}
+		isTwice = isTwice || v == 2
+		isThrice = isThrice || v == 3
 	}
 	return isTwice, isThrice
 }
