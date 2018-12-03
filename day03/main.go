@@ -46,12 +46,12 @@ func main() {
 		for i := 0; i < height; i++ {
 			for j := 0; j < width; j++ {
 				claims[row+i][col+j]++
-				c2 := claims2[row+i][col+j]
-				if c2 > 0 {
+				c2 := &claims2[row+i][col+j]
+				if *c2 > 0 {
 					bannedClaims[claimID-1] = true
-					bannedClaims[c2-1] = true
+					bannedClaims[*c2-1] = true
 				}
-				claims2[row+i][col+j] = claimID
+				*c2 = claimID
 			}
 		}
 	}
