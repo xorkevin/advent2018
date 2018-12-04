@@ -17,10 +17,10 @@ They'd be stored together, so the box IDs should be similar. Too bad it would
 take forever to search the warehouse for **two similar box IDs...**" They walk
 too far away to hear any more.
 
-Late at night, you sneak to the warehouse - who knows what kinds of paradoxes
-you could cause if you were discovered - and use your fancy wrist device to
-quickly scan every box and produce a list of the likely candidates (your puzzle
-input).
+Late at night, you sneak to the warehouse&mdash;who knows what kinds of
+paradoxes you could cause if you were discovered&mdash;and use your fancy wrist
+device to quickly scan every box and produce a list of the likely candidates
+(your puzzle input).
 
 To make sure you didn't miss any, you scan the likely candidate boxes again,
 counting the number that have an ID containing **exactly two of any letter**
