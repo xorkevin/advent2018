@@ -5,12 +5,52 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 )
 
 const (
 	puzzleInput = "input.txt"
 )
+
+type (
+	Event struct {
+		Time  int
+		Delta int
+	}
+	EventList []Event
+
+	Timesheet map[int]map[int]int
+)
+
+func (e EventList) Len() int {
+	return len(e)
+}
+
+func (e EventList) Less(i, j int) bool {
+	return e[i].Time < e[j].Time
+}
+
+func (e EventList) Swap(i, j int) {
+	t := e[i]
+	e[i] = e[j]
+	e[j] = t
+}
+
+func (t Timesheet) Get(guardid int) map[int]int {
+	if v, ok := t[guardid]; ok {
+		return v
+	}
+	v := map[int]int{}
+	t[guardid] = v
+	return v
+}
+
+func (t Timesheet) Add(guardid int, time int, delta int) {
+	v := t.Get(guardid)
+	v[time] += delta
+}
 
 func main() {
 	file, err := os.Open(puzzleInput)
@@ -23,126 +63,101 @@ func main() {
 		}
 	}()
 
-	lines := []string{}
+	timesheet := Timesheet{}
+	currentGuard := 0
+	asleepTime := 0
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+		line := strings.Split(scanner.Text(), "]")
+		minute, err := strconv.Atoi(strings.Split(line[0], ":")[1])
+		if err != nil {
+			log.Fatal(err)
+		}
+		action := strings.Fields(line[1])
+		switch action[0] {
+		case "Guard":
+			guardid, err := strconv.Atoi(action[1][1:])
+			if err != nil {
+				log.Fatal(err)
+			}
+			currentGuard = guardid
+		case "falls":
+			asleepTime = minute
+		case "wakes":
+			timesheet.Add(currentGuard, asleepTime, 1)
+			timesheet.Add(currentGuard, minute, -1)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 
-	part1(lines)
-	part2(lines)
-}
+	guardtimes := map[int]EventList{}
+	for guardid, v := range timesheet {
+		events := make(EventList, 0, len(v))
+		for time, delta := range v {
+			events = append(events, Event{
+				Time:  time,
+				Delta: delta,
+			})
+		}
+		sort.Sort(events)
+		guardtimes[guardid] = events
+	}
 
-func part1(lines []string) {
-	guardHours := map[int]int{}
-	currentGuard := 0
-	asleepTime := 0
+	// part 1
+	totalMaxGuardid := 0
+	totalMaxTime := 0
+	totalMaxFreqMin := 0
 
-	for _, line := range lines {
-		var year, month, day, hour, minute int
-		fmt.Sscanf(line, "[%d-%d-%d %d:%d]", &year, &month, &day, &hour, &minute)
-		action := strings.Fields(strings.Split(line, "]")[1])
-		if action[0] == "Guard" {
-			var guardnum int
-			fmt.Sscanf(action[1], "#%d", &guardnum)
-			currentGuard = guardnum
-		} else if action[0] == "falls" {
-			asleepTime = minute
-		} else if action[0] == "wakes" {
-			if _, ok := guardHours[currentGuard]; ok {
-				guardHours[currentGuard] += minute - asleepTime
-			} else {
-				guardHours[currentGuard] = minute - asleepTime
+	for guardid, events := range guardtimes {
+		guardMaxFreq := 0
+		guardMaxFreqMin := 0
+
+		prevTime := 0
+		prevCounter := 0
+		cumulative := 0
+		counter := 0
+		for _, i := range events {
+			prevCounter = counter
+			counter += i.Delta
+			cumulative += prevCounter * (i.Time - prevTime)
+			prevTime = i.Time
+
+			if counter > guardMaxFreq {
+				guardMaxFreq = counter
+				guardMaxFreqMin = i.Time
+			}
+		}
+
+		if cumulative > totalMaxTime {
+			totalMaxTime = cumulative
+			totalMaxGuardid = guardid
+			totalMaxFreqMin = guardMaxFreqMin
+		}
+	}
+
+	fmt.Println("Part1: ", totalMaxGuardid*totalMaxFreqMin)
+
+	// part 2
+	maxGuardid := 0
+	maxTime := 0
+	maxFreqMin := 0
+
+	for guardid, events := range guardtimes {
+		counter := 0
+		for _, i := range events {
+			counter += i.Delta
+
+			if counter > maxTime {
+				maxTime = counter
+				maxGuardid = guardid
+				maxFreqMin = i.Time
 			}
 		}
 	}
 
-	guardid := 0
-	hoursAsleep := 0
-	for k, v := range guardHours {
-		if v > hoursAsleep {
-			guardid = k
-			hoursAsleep = v
-		}
-	}
-
-	guardMinutes := make([]int, 60)
-
-	for _, line := range lines {
-		var year, month, day, hour, minute int
-		fmt.Sscanf(line, "[%d-%d-%d %d:%d]", &year, &month, &day, &hour, &minute)
-		action := strings.Fields(strings.Split(line, "]")[1])
-		if action[0] == "Guard" {
-			var guardnum int
-			fmt.Sscanf(action[1], "#%d", &guardnum)
-			currentGuard = guardnum
-		} else if action[0] == "falls" {
-			asleepTime = minute
-		} else if action[0] == "wakes" {
-			if currentGuard == guardid {
-				for i := asleepTime; i < minute; i++ {
-					guardMinutes[i]++
-				}
-			}
-		}
-	}
-
-	minute := 0
-	minuteAmount := 0
-	for n, i := range guardMinutes {
-		if i > minuteAmount {
-			minute = n
-			minuteAmount = i
-		}
-	}
-
-	fmt.Println(minute * guardid)
-}
-
-func part2(lines []string) {
-	minutes := map[int][]int{}
-	currentGuard := 0
-	asleepTime := 0
-
-	for _, line := range lines {
-		var year, month, day, hour, minute int
-		fmt.Sscanf(line, "[%d-%d-%d %d:%d]", &year, &month, &day, &hour, &minute)
-		action := strings.Fields(strings.Split(line, "]")[1])
-		if action[0] == "Guard" {
-			var guardnum int
-			fmt.Sscanf(action[1], "#%d", &guardnum)
-			currentGuard = guardnum
-		} else if action[0] == "falls" {
-			asleepTime = minute
-		} else if action[0] == "wakes" {
-			if _, ok := minutes[currentGuard]; !ok {
-				minutes[currentGuard] = make([]int, 60)
-			}
-			arr := minutes[currentGuard]
-			for i := asleepTime; i < minute; i++ {
-				arr[i]++
-			}
-		}
-	}
-
-	maxGuard := 0
-	maxMinute := 0
-	maxAmount := 0
-
-	for k, v := range minutes {
-		for n, i := range v {
-			if i > maxAmount {
-				maxGuard = k
-				maxMinute = n
-				maxAmount = i
-			}
-		}
-	}
-
-	fmt.Println(maxGuard * maxMinute)
+	fmt.Println("Part2: ", maxGuardid*maxFreqMin)
 }
