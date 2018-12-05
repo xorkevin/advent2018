@@ -1,38 +1,8 @@
 use std::error;
-use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 
 const PUZZLEINPUT: &str = "input.txt";
-
-#[derive(Debug)]
-struct BasicError {
-    msg: String,
-}
-
-impl BasicError {
-    fn new(msg: &str) -> BasicError {
-        BasicError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for BasicError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl error::Error for BasicError {
-    fn description(&self) -> &str {
-        &self.msg
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        None
-    }
-}
 
 fn is_reactive(a: &char, b: &char) -> bool {
     a != b && a.to_ascii_uppercase() == b.to_ascii_uppercase()
