@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
-	"os"
 )
 
 const (
@@ -55,7 +53,7 @@ func (s *Stack) Len() int {
 }
 
 func reduce(line []byte) []byte {
-	reduction := Stack{}
+	reduction := make(Stack, 0, len(line))
 	for _, i := range line {
 		if reduction.Len() == 0 {
 			reduction.Push(i)
@@ -71,33 +69,18 @@ func reduce(line []byte) []byte {
 }
 
 func filter(line []byte, c byte) int {
-	b := bytes.Buffer{}
+	b := make([]byte, 0, len(line))
 	for _, i := range line {
 		if i != c && byteUpper(i) != c {
-			b.WriteByte(i)
+			b = append(b, i)
 		}
 	}
-	return len(reduce(b.Bytes()))
+	return len(reduce(b))
 }
 
 func main() {
-	file, err := os.Open(puzzleInput)
+	line, err := ioutil.ReadFile(puzzleInput)
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	var line []byte
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line = []byte(scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 
