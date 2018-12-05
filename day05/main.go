@@ -32,48 +32,42 @@ func react(a, b byte) bool {
 	return a != b && i == j
 }
 
-func transform(from, to *bytes.Buffer) bool {
-	changed := false
-	kprev, err := from.ReadByte()
-	kcur, err := from.ReadByte()
-	var next byte
-	for {
-		if react(kprev, kcur) {
-			changed = true
-			next, err = from.ReadByte()
-			if err != nil {
-				return true
-			}
-			kprev = kcur
-			kcur = next
-		} else {
-			to.WriteByte(kprev)
-		}
-		next, err = from.ReadByte()
-		if err != nil {
-			if !react(kprev, kcur) {
-				to.WriteByte(kcur)
-			}
-			return changed
-		}
-		kprev = kcur
-		kcur = next
-	}
+type (
+	Stack []byte
+)
+
+func (s *Stack) Push(a byte) {
+	*s = append(*s, a)
 }
 
-func iterate(from *bytes.Buffer) int {
-	to := &bytes.Buffer{}
-	tolen := 0
-	changed := true
-	for changed {
-		changed = transform(from, to)
-		tolen = to.Len()
-		t := from
-		from = to
-		to = t
-		to.Reset()
+func (s *Stack) Pop() byte {
+	a := (*s)[len(*s)-1]
+	*s = (*s)[:len(*s)-1]
+	return a
+}
+
+func (s *Stack) Peek() byte {
+	return (*s)[len(*s)-1]
+}
+
+func (s *Stack) Len() int {
+	return len(*s)
+}
+
+func reduce(line []byte) []byte {
+	reduction := Stack{}
+	for _, i := range line {
+		if reduction.Len() == 0 {
+			reduction.Push(i)
+			continue
+		}
+		if react(reduction.Peek(), i) {
+			reduction.Pop()
+			continue
+		}
+		reduction.Push(i)
 	}
-	return tolen
+	return []byte(reduction)
 }
 
 func filter(line []byte, c byte) int {
@@ -83,7 +77,7 @@ func filter(line []byte, c byte) int {
 			b.WriteByte(i)
 		}
 	}
-	return iterate(&b)
+	return len(reduce(b.Bytes()))
 }
 
 func main() {
@@ -107,9 +101,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	b := bytes.Buffer{}
-	b.Write(line)
-	fmt.Println(iterate(&b))
+	fmt.Println(len(reduce(line)))
 
 	shortestLength := 99999999
 	for i := byte('A'); i <= byte('Z'); i++ {
