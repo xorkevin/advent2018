@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -83,6 +84,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	line = bytes.TrimRight(line, "\n")
 
 	fmt.Println(len(reduce(line)))
 
