@@ -8,6 +8,7 @@ use std::io::BufReader;
 const PUZZLEINPUT: &str = "input.txt";
 const GRID_START: isize = -360;
 const GRID_END: isize = 720;
+const DIST_CAP: isize = 10000;
 
 #[derive(Debug)]
 struct BasicError {
@@ -47,25 +48,26 @@ fn distance(a: &Point, b: &Point) -> isize {
 }
 
 fn find_closest(p: &Point, points: &Vec<Point>) -> (bool, usize, isize) {
-    let mut tie = false;
-    let mut ind = 0;
-    let mut dist = distance(p, &points[0]);
-    for (n, i) in points.iter().enumerate().skip(1) {
-        let k = distance(p, i);
-        if k < dist {
-            tie = false;
-            ind = n;
-            dist = k;
-        } else if k == dist {
-            tie = true
-        }
-    }
-    (tie, ind, dist)
+    points.iter().enumerate().skip(1).fold(
+        (false, 0, distance(p, &points[0])),
+        |(tie, ind, dist), (n, i)| {
+            let k = distance(p, i);
+            if k < dist {
+                (false, n, k)
+            } else {
+                (k == dist || tie, ind, dist)
+            }
+        },
+    )
 }
 
 fn is_edge(p: &Point) -> bool {
     let Point(x, y) = p;
     *x == GRID_START || *y == GRID_START || *x == GRID_END - 1 || *y == GRID_END - 1
+}
+
+fn combined_distance(p: &Point, points: &Vec<Point>) -> isize {
+    points.iter().fold(0, |acc, i| acc + distance(p, i))
 }
 
 fn main() -> Result<(), Box<error::Error>> {
@@ -83,6 +85,7 @@ fn main() -> Result<(), Box<error::Error>> {
             Point(k[0], k[1])
         }).collect::<Vec<_>>();
 
+    let mut in_region = 0;
     let mut edge = HashSet::new();
     let mut counts = vec![0; points.len()];
     for i in GRID_START..GRID_END {
@@ -94,6 +97,9 @@ fn main() -> Result<(), Box<error::Error>> {
             }
             if is_edge(&p) {
                 edge.insert(ind);
+            }
+            if combined_distance(&p, &points) < DIST_CAP {
+                in_region += 1;
             }
         }
     }
@@ -108,6 +114,8 @@ fn main() -> Result<(), Box<error::Error>> {
             .ok_or(BasicError::new("Cannot find max"))?
             .1
     );
+
+    println!("{}", in_region);
 
     Ok(())
 }

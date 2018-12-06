@@ -50,17 +50,16 @@ func main() {
 	counts := make([]int, len(points))
 	for i := gridStart; i < gridEnd; i++ {
 		for j := gridStart; j < gridEnd; j++ {
-			if combinedDistance(j, i, points) < 10000 {
-				inRegion++
-			}
 			k, tie := findClosest(j, i, points)
-			if tie {
-				continue
+			if !tie {
+				counts[k]++
 			}
 			if isEdge(j, i) {
 				edge[k] = struct{}{}
 			}
-			counts[k]++
+			if combinedDistance(j, i, points) < 10000 {
+				inRegion++
+			}
 		}
 	}
 
