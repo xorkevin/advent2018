@@ -99,12 +99,12 @@ func findClosest(x, y int, points []Point) (int, bool) {
 	tie := false
 	ind := 0
 	dist := distance(&p, &points[0])
-	for n, i := range points {
+	for n, i := range points[1:] {
 		k := distance(&p, &i)
 		if k < dist {
 			tie = false
 			dist = k
-			ind = n
+			ind = n + 1
 		} else if k == dist {
 			tie = true
 		}
