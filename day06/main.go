@@ -53,9 +53,9 @@ func main() {
 			k, tie := findClosest(j, i, points)
 			if !tie {
 				counts[k]++
-			}
-			if isEdge(j, i) {
-				edge[k] = struct{}{}
+				if isEdge(j, i) {
+					edge[k] = struct{}{}
+				}
 			}
 			if combinedDistance(j, i, points) < 10000 {
 				inRegion++

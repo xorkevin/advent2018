@@ -94,9 +94,9 @@ fn main() -> Result<(), Box<error::Error>> {
             let (tie, ind, _) = find_closest(&p, &points);
             if !tie {
                 counts[ind] += 1;
-            }
-            if is_edge(&p) {
-                edge.insert(ind);
+                if is_edge(&p) {
+                    edge.insert(ind);
+                }
             }
             if combined_distance(&p, &points) < DIST_CAP {
                 in_region += 1;
