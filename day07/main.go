@@ -11,6 +11,7 @@ import (
 
 const (
 	puzzleInput = "input.txt"
+	numWorkers  = 5
 )
 
 type (
@@ -40,6 +41,15 @@ func (t *Task) AddDep(dep byte) {
 
 func (t *Task) AddNext(next byte) {
 	t.Next = append(t.Next, next)
+}
+
+func (t *Task) CanBegin(finished map[byte]struct{}) bool {
+	for _, i := range t.Deps {
+		if _, ok := finished[i]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func NewProcess(id byte) *Process {
@@ -118,50 +128,56 @@ func main() {
 		log.Fatal(err)
 	}
 
-	order := []byte{}
 	openList := Queue{}
 	for k, _ := range tasks {
 		if _, ok := isNext[k]; !ok {
 			openList.Push(k)
 		}
 	}
-	sort.Sort(openList)
-	closedList := map[byte]struct{}{}
+	openList2 := make(Queue, len(openList))
+	copy(openList2, openList)
+	part1(openList, tasks)
+	part2(openList2, tasks)
+}
 
-openloop:
+func part1(openList Queue, tasks map[byte]*Task) {
+	sort.Sort(openList)
+
+	order := []byte{}
+
+	closedList := map[byte]struct{}{}
 	for len(openList) > 0 {
 		top := openList.Pop()
-		if _, ok := closedList[top]; ok {
-			continue
-		}
-		task := tasks[top]
-		for _, i := range task.Deps {
-			if _, ok := closedList[i]; !ok {
-				continue openloop
-			}
-		}
-		closedList[top] = struct{}{}
 		order = append(order, top)
-		openList = append(openList, task.Next...)
+		closedList[top] = struct{}{}
+		task := tasks[top]
+		for _, i := range task.Next {
+			if _, ok := closedList[i]; ok {
+				continue
+			}
+			next := tasks[i]
+			if !next.CanBegin(closedList) {
+				continue
+			}
+			openList.Push(i)
+		}
 		sort.Sort(openList)
 	}
 
 	fmt.Println(string(order))
+}
+
+func part2(openList Queue, tasks map[byte]*Task) {
+	sort.Sort(openList)
 
 	elapsedTime := 0
-	openList = Queue{}
-	for k, _ := range tasks {
-		if _, ok := isNext[k]; !ok {
-			openList.Push(k)
-		}
-	}
-	sort.Sort(openList)
-	closedList = map[byte]struct{}{}
+
+	closedList := map[byte]struct{}{}
 	currentWork := []*Process{}
 
 workloop:
 	for {
-		for len(currentWork) < 5 {
+		for len(currentWork) < numWorkers {
 			if openList.Len() == 0 {
 				if len(currentWork) == 0 {
 					break workloop
@@ -186,6 +202,7 @@ workloop:
 			i.Cost -= minTime
 			if i.Cost == 0 {
 				doneWork = append(doneWork, i.TaskID)
+				closedList[i.TaskID] = struct{}{}
 			} else {
 				nextWork = append(nextWork, i)
 				nextTasks[i.TaskID] = struct{}{}
@@ -194,9 +211,7 @@ workloop:
 		currentWork = nextWork
 
 		for _, i := range doneWork {
-			closedList[i] = struct{}{}
 			task := tasks[i]
-		nextloop:
 			for _, j := range task.Next {
 				if _, ok := nextTasks[j]; ok {
 					continue
@@ -205,10 +220,8 @@ workloop:
 					continue
 				}
 				next := tasks[j]
-				for _, k := range next.Deps {
-					if _, ok := closedList[k]; !ok {
-						continue nextloop
-					}
+				if !next.CanBegin(closedList) {
+					continue
 				}
 				openList.Push(j)
 			}
