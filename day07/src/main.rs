@@ -10,6 +10,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 
 const PUZZLEINPUT: &str = "input.txt";
+const NUM_WORKERS: usize = 5;
 
 #[derive(Debug)]
 struct BasicError {
@@ -72,6 +73,10 @@ impl Task {
         }
         true
     }
+
+    fn cost(&self) -> u32 {
+        (self.id as u32) - ('A' as u32) + 61
+    }
 }
 
 impl PartialEq for Task {
@@ -90,6 +95,21 @@ impl Ord for Task {
 impl PartialOrd for Task {
     fn partial_cmp(&self, other: &Task) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+#[derive(Debug)]
+struct Process<'a> {
+    task: &'a Task,
+    cost: u32,
+}
+
+impl<'a> Process<'a> {
+    fn new(task: &'a Task) -> Process {
+        Process {
+            task: task,
+            cost: task.cost(),
+        }
     }
 }
 
@@ -163,6 +183,67 @@ fn main() -> Result<(), Box<error::Error>> {
             }
         }
         println!("{}", order.iter().collect::<String>());
+    }
+
+    {
+        let mut elapsed = 0;
+
+        let mut openlist = BinaryHeap::new();
+        for i in start.iter() {
+            openlist.push(tasks.get(i).ok_or("Failed to get task")?);
+        }
+        let mut closedlist = HashSet::new();
+        let mut current_work = Vec::new();
+
+        'workloop: loop {
+            while current_work.len() < NUM_WORKERS {
+                if let Some(i) = openlist.pop() {
+                    current_work.push(Process::new(i));
+                } else {
+                    if current_work.len() == 0 {
+                        break 'workloop;
+                    }
+                    break;
+                }
+            }
+            let min_time = current_work
+                .iter()
+                .min_by_key(|x| x.cost)
+                .ok_or("Failed to find minimum cost")?
+                .cost;
+            elapsed += min_time;
+            let mut next_work_ids = HashSet::new();
+            let mut next_work = Vec::new();
+            let mut done_work = Vec::new();
+            while let Some(mut i) = current_work.pop() {
+                i.cost -= min_time;
+                if i.cost == 0 {
+                    closedlist.insert(i.task.id);
+                    done_work.push(i);
+                } else {
+                    next_work_ids.insert(i.task.id);
+                    next_work.push(i);
+                }
+            }
+            current_work = next_work;
+
+            for i in done_work.iter() {
+                for taskid in i.task.next.iter() {
+                    if next_work_ids.contains(&taskid) {
+                        continue;
+                    }
+                    if closedlist.contains(&taskid) {
+                        continue;
+                    }
+                    let task = tasks.get(&taskid).ok_or("Failed to get task")?;
+                    if !task.can_start(&closedlist) {
+                        continue;
+                    }
+                    openlist.push(task);
+                }
+            }
+        }
+        println!("{}", elapsed);
     }
 
     Ok(())
