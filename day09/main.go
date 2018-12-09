@@ -43,29 +43,28 @@ func (n *Node) RemoveNext() *Node {
 }
 
 func main() {
-	playerScore := make([]int, playerCount)
+	score := make([]int, playerCount)
 	current := NewNode(0)
 	for i := 0; i < lastValue; i++ {
-		currentPlayer := i % playerCount
-		currentValue := i + 1
-		if currentValue%23 == 0 {
-			playerScore[currentPlayer] += currentValue
+		player := i % playerCount
+		value := i + 1
+		if value%23 == 0 {
 			for j := 0; j < 8; j++ {
 				current = current.Prev
 			}
 			node := current.RemoveNext()
 			current = current.Next
-			playerScore[currentPlayer] += node.Val
+			score[player] += value + node.Val
 		} else {
 			current = current.Next
-			node := NewNode(currentValue)
+			node := NewNode(value)
 			current.Insert(node)
-			current = node
+			current = current.Next
 		}
 	}
 
 	maxScore := 0
-	for _, i := range playerScore {
+	for _, i := range score {
 		if i > maxScore {
 			maxScore = i
 		}
