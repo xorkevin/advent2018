@@ -81,13 +81,13 @@ func main() {
 		maxY := 0
 		maxSize := 0
 		for i := 1; i < boardSize+1; i++ {
-			for y := 1; y < boardSize-i+1; y++ {
-				for x := 1; x < boardSize-i+1; x++ {
-					power := partial[y+i][x+i] - partial[y-1][x+i] - partial[y+i][x-1] + partial[y-1][x-1]
+			for y := 0; y < boardSize-i+1; y++ {
+				for x := 0; x < boardSize-i+1; x++ {
+					power := partial[y+i][x+i] - partial[y][x+i] - partial[y+i][x] + partial[y][x]
 					if power > maxPower {
 						maxPower = power
-						maxX = x
-						maxY = y
+						maxX = x + 1
+						maxY = y + 1
 						maxSize = i
 					}
 				}
