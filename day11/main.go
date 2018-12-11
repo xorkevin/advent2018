@@ -43,10 +43,6 @@ func generatePartials(board [][]int) [][]int {
 	for i := range partial {
 		partial[i] = make([]int, boardSize+1)
 	}
-	for i := 0; i < boardSize+1; i++ {
-		partial[0][i] = 0
-		partial[i][0] = 0
-	}
 	for y := 1; y < boardSize+1; y++ {
 		for x := 1; x < boardSize+1; x++ {
 			partial[y][x] = board[y-1][x-1] + partial[y][x-1] + partial[y-1][x] - partial[y-1][x-1]
