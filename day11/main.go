@@ -15,16 +15,6 @@ func powerLevel(x, y int) int {
 	return (rackID*y+puzzleInput)*rackID/100%10 - 5
 }
 
-func power9(x, y int, board [][]int) int {
-	power := 0
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			power += board[y+i][x+j]
-		}
-	}
-	return power
-}
-
 func generatePower() [][]int {
 	board := make([][]int, boardSize)
 	for i := range board {
@@ -53,13 +43,14 @@ func generatePartials(board [][]int) [][]int {
 
 func main() {
 	board := generatePower()
+	partial := generatePartials(board)
 	{
 		maxPower := 0
 		maxX := 0
 		maxY := 0
-		for y := 0; y < boardSize-2; y++ {
-			for x := 0; x < boardSize-2; x++ {
-				power := power9(x, y, board)
+		for y := 0; y < boardSize-3; y++ {
+			for x := 0; x < boardSize-3; x++ {
+				power := partial[y+3][x+3] - partial[y][x+3] - partial[y+3][x] + partial[y][x]
 				if power > maxPower {
 					maxPower = power
 					maxX = x + 1
@@ -67,10 +58,9 @@ func main() {
 				}
 			}
 		}
-		fmt.Println(maxX, maxY)
+		fmt.Println(maxPower, maxX, maxY)
 	}
 
-	partial := generatePartials(board)
 	{
 		maxPower := 0
 		maxX := 0
