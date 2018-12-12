@@ -45,28 +45,24 @@ var (
 	}
 )
 
-func match(ind int, state []byte) (byte, bool) {
+func match(ind int, state []byte) byte {
 	left := ind - 2
 	right := ind + 3
 	if val, ok := rules[string(state[left:right])]; ok {
-		return byte(val), true
+		return byte(val)
 	}
-	return 0, false
+	return state[ind]
 }
 
 func nextState(state []byte) []byte {
-	next := make([]byte, len(state))
-	next[0] = byte('.')
-	next[1] = byte('.')
-	next[len(next)-2] = byte('.')
-	next[len(next)-1] = byte('.')
-	for i := 2; i < len(next)-2; i++ {
-		if val, ok := match(i, state); ok {
-			next[i] = val
-		} else {
-			next[i] = state[i]
-		}
+	next := make([]byte, 0, len(state))
+	next = append(next, byte('.'))
+	next = append(next, byte('.'))
+	for i := 2; i < len(state)-2; i++ {
+		next = append(next, match(i, state))
 	}
+	next = append(next, byte('.'))
+	next = append(next, byte('.'))
 	return next
 }
 
@@ -85,9 +81,9 @@ const (
 )
 
 func main() {
-	state := make([]byte, len(puzzleInput)*16)
-	for i := range state {
-		state[i] = byte('.')
+	state := make([]byte, 0, len(puzzleInput)*16)
+	for i := 0; i < len(puzzleInput)*16; i++ {
+		state = append(state, byte('.'))
 	}
 	zeroInd := len(puzzleInput)
 	copy(state[zeroInd:], []byte(puzzleInput))
