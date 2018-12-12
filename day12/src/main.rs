@@ -24,16 +24,19 @@ fn score(zero_ind: i64, state: &Vec<char>) -> i64 {
     })
 }
 
-fn next_state(state: Vec<char>, rules: &HashMap<String, char>) -> Vec<char> {
-    let mut next = Vec::with_capacity(state.len());
-    next.push('.');
-    next.push('.');
+fn next_state(
+    state: Vec<char>,
+    mut next: Vec<char>,
+    rules: &HashMap<String, char>,
+) -> (Vec<char>, Vec<char>) {
+    next[0] = '.';
+    next[1] = '.';
+    next[state.len() - 2] = '.';
+    next[state.len() - 1] = '.';
     for i in 2..state.len() - 2 {
-        next.push(exec_rule(i, &state, rules));
+        next[i] = exec_rule(i, &state, rules);
     }
-    next.push('.');
-    next.push('.');
-    next
+    (next, state)
 }
 
 fn main() {
@@ -88,8 +91,11 @@ fn main() {
 
     let mut prev_delta = 0;
     let mut prev_score = score(zero_ind, &state);
+    let mut prev_state = vec!['.'; state.len()];
     for i in 0..256 {
-        state = next_state(state, &rules);
+        let (s1, p1) = next_state(state, prev_state, &rules);
+        state = s1;
+        prev_state = p1;
         let score = score(zero_ind, &state);
         let delta = score - prev_score;
         if i == 19 {

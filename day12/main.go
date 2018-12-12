@@ -54,16 +54,15 @@ func match(ind int, state []byte) byte {
 	return state[ind]
 }
 
-func nextState(state []byte) []byte {
-	next := make([]byte, 0, len(state))
-	next = append(next, byte('.'))
-	next = append(next, byte('.'))
+func nextState(state []byte, next []byte) ([]byte, []byte) {
+	next[0] = byte('.')
+	next[1] = byte('.')
+	next[len(state)-2] = byte('.')
+	next[len(state)-1] = byte('.')
 	for i := 2; i < len(state)-2; i++ {
-		next = append(next, match(i, state))
+		next[i] = match(i, state)
 	}
-	next = append(next, byte('.'))
-	next = append(next, byte('.'))
-	return next
+	return next, state
 }
 
 func score(zeroInd int, state []byte) int {
@@ -90,8 +89,9 @@ func main() {
 
 	prevDelta := 0
 	prevScore := score(zeroInd, state)
+	prevState := make([]byte, len(state))
 	for i := 0; i < 200; i++ {
-		state = nextState(state)
+		state, prevState = nextState(state, prevState)
 		score := score(zeroInd, state)
 		delta := score - prevScore
 		if i == 19 {
