@@ -10,9 +10,9 @@ haven't even figured out how to avoid collisions yet.
 
 You map out the tracks (your puzzle input) and see where you can help.
 
-Tracks consist of straight paths (`|` and `-`), curves (`/` and
-<code>&bsol;</code>), and intersections (`+`). Curves connect exactly two
-perpendicular pieces of track; for example, this is a closed loop:
+Tracks consist of straight paths (`|` and `-`), curves (`/` and `\ `), and
+intersections (`+`). Curves connect exactly two perpendicular pieces of track;
+for example, this is a closed loop:
 
 ```
 /----\
