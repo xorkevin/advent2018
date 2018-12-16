@@ -39,8 +39,10 @@ func (p Pos) Manhattan(other Pos) int {
 
 type (
 	Entity struct {
-		elf bool
-		pos Pos
+		elf    bool
+		pos    Pos
+		health int
+		attack int
 	}
 
 	EntityByPos []*Entity
@@ -48,9 +50,22 @@ type (
 
 func NewEntity(pos Pos, elf bool) *Entity {
 	return &Entity{
-		pos: pos,
-		elf: elf,
+		pos:    pos,
+		elf:    elf,
+		health: 200,
+		attack: 3,
 	}
+}
+
+func (e *Entity) Dead() bool {
+	return e.health < 1
+}
+func (e *Entity) Hit(damage int) bool {
+	e.health -= damage
+	return e.Dead()
+}
+func (e *Entity) Attack(other *Entity) bool {
+	return other.Hit(e.attack)
 }
 
 func (s EntityByPos) Len() int {
@@ -90,6 +105,13 @@ func (g *Game) IsFree(pos Pos) bool {
 func (g *Game) AdjacentFree(pos Pos) []Pos {
 	k := []Pos{}
 	i := Pos{
+		x: pos.x,
+		y: pos.y - 1,
+	}
+	if g.IsFree(i) {
+		k = append(k, i)
+	}
+	i = Pos{
 		x: pos.x - 1,
 		y: pos.y,
 	}
@@ -99,13 +121,6 @@ func (g *Game) AdjacentFree(pos Pos) []Pos {
 	i = Pos{
 		x: pos.x + 1,
 		y: pos.y,
-	}
-	if g.IsFree(i) {
-		k = append(k, i)
-	}
-	i = Pos{
-		x: pos.x,
-		y: pos.y - 1,
 	}
 	if g.IsFree(i) {
 		k = append(k, i)
@@ -132,6 +147,13 @@ func (g *Game) IsEnemy(pos Pos, elf bool) bool {
 func (g *Game) AdjacentEnemy(pos Pos, elf bool) []Pos {
 	k := []Pos{}
 	i := Pos{
+		x: pos.x,
+		y: pos.y - 1,
+	}
+	if g.IsEnemy(i, elf) {
+		k = append(k, i)
+	}
+	i = Pos{
 		x: pos.x - 1,
 		y: pos.y,
 	}
@@ -141,13 +163,6 @@ func (g *Game) AdjacentEnemy(pos Pos, elf bool) []Pos {
 	i = Pos{
 		x: pos.x + 1,
 		y: pos.y,
-	}
-	if g.IsEnemy(i, elf) {
-		k = append(k, i)
-	}
-	i = Pos{
-		x: pos.x,
-		y: pos.y - 1,
 	}
 	if g.IsEnemy(i, elf) {
 		k = append(k, i)
@@ -253,6 +268,14 @@ func (ps PosSet) Add(pos Pos) {
 	ps[pos] = struct{}{}
 }
 
+func (g *Game) RemoveEntity(e *Entity) {
+	if e.elf {
+		delete(g.elfs, e.pos)
+	} else {
+		delete(g.goblins, e.pos)
+	}
+}
+
 func (g *Game) EntityPath(start, goal Pos) (*Pos, int) {
 	closed := PosSet{}
 	open := NewPosHeap(start)
@@ -274,40 +297,64 @@ func (g *Game) EntityPath(start, goal Pos) (*Pos, int) {
 
 func (g *Game) EntityMove(e *Entity, enemies map[Pos]*Entity) {
 	var next *Pos
+	var target *Pos
 	cost := 99999999
 	for k, _ := range enemies {
 		for _, i := range g.AdjacentFree(k) {
-			if p, c := g.EntityPath(e.pos, i); p != nil && c < cost {
+			a := i
+			if target != nil && !a.Less(*target) {
+				continue
+			}
+			if p, c := g.EntityPath(e.pos, i); p != nil && c <= cost {
 				next = p
+				target = &a
 				cost = c
 			}
 		}
 	}
-	if next != nil {
-		if e.elf {
-			delete(g.elfs, e.pos)
-			g.elfs[*next] = e
-		} else {
-			delete(g.goblins, e.pos)
-			g.goblins[*next] = e
+	if next == nil {
+		return
+	}
+	if e.elf {
+		delete(g.elfs, e.pos)
+		g.elfs[*next] = e
+	} else {
+		delete(g.goblins, e.pos)
+		g.goblins[*next] = e
+	}
+	e.pos = *next
+}
+
+func (g *Game) EntityAttack(e *Entity, enemies []*Entity) {
+	if len(enemies) == 0 {
+		return
+	}
+	target := enemies[0]
+	for _, i := range enemies[1:] {
+		if i.health < target.health {
+			target = i
 		}
-		e.pos = *next
+	}
+	if dead := e.Attack(target); dead {
+		g.RemoveEntity(target)
 	}
 }
 
 func (g *Game) TickEntity(e *Entity, enemies map[Pos]*Entity) {
-	if adjacentEnemies := g.AdjacentEnemy(e.pos, e.elf); len(adjacentEnemies) == 0 {
+	adjacentEnemies := g.AdjacentEnemy(e.pos, e.elf)
+	if len(adjacentEnemies) == 0 {
 		// move
 		g.EntityMove(e, enemies)
-		if adjacentEnemies := g.AdjacentEnemy(e.pos, e.elf); len(adjacentEnemies) > 0 {
-			// attack
-		}
-	} else {
-		// attack
+		adjacentEnemies = g.AdjacentEnemy(e.pos, e.elf)
 	}
+	adj := make([]*Entity, 0, len(adjacentEnemies))
+	for _, i := range adjacentEnemies {
+		adj = append(adj, enemies[i])
+	}
+	g.EntityAttack(e, adj)
 }
 
-func (g *Game) Tick() {
+func (g *Game) Tick() bool {
 	all := make([]*Entity, 0, len(g.elfs)+len(g.goblins))
 	for _, v := range g.elfs {
 		all = append(all, v)
@@ -317,7 +364,13 @@ func (g *Game) Tick() {
 	}
 	sort.Sort(EntityByPos(all))
 	for _, i := range all {
-		// if i is dead, continue
+		if i.Dead() {
+			continue
+		}
+
+		if len(g.elfs) == 0 || len(g.goblins) == 0 {
+			return true
+		}
 
 		if i.elf {
 			g.TickEntity(i, g.goblins)
@@ -325,6 +378,7 @@ func (g *Game) Tick() {
 			g.TickEntity(i, g.elfs)
 		}
 	}
+	return false
 }
 
 func (g *Game) Print() {
@@ -392,8 +446,18 @@ func main() {
 	}
 
 	game := NewGame(elfs, goblins, board)
-	game.Print()
-	fmt.Println()
-	game.Tick()
-	game.Print()
+
+	i := 0
+	for done := game.Tick(); !done; done = game.Tick() {
+		i++
+	}
+	totalHealth := 0
+	for _, i := range game.elfs {
+		totalHealth += i.health
+	}
+	for _, i := range game.goblins {
+		totalHealth += i.health
+	}
+	fmt.Println(i)
+	fmt.Println(i * totalHealth)
 }
