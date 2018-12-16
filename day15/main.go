@@ -240,6 +240,10 @@ func (h *PosHeap) Take() (*Pos, int) {
 	delete(h.scores, k)
 	return &k, ks
 }
+func (h *PosHeap) Has(pos Pos) bool {
+	_, ok := h.scores[pos]
+	return ok
+}
 
 func (ps PosSet) Has(pos Pos) bool {
 	_, ok := ps[pos]
@@ -260,7 +264,7 @@ func (g *Game) EntityPath(start, goal Pos) (*Pos, int) {
 		closed.Add(*current)
 		k := g.AdjacentFree(*current)
 		for _, i := range k {
-			if !closed.Has(i) {
+			if !closed.Has(i) && !open.Has(i) {
 				open.Add(currentg+1, i)
 			}
 		}
@@ -301,7 +305,6 @@ func (g *Game) TickEntity(e *Entity, enemies map[Pos]*Entity) {
 	} else {
 		// attack
 	}
-	g.Print()
 }
 
 func (g *Game) Tick() {
