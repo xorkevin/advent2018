@@ -13,11 +13,32 @@ const (
 	puzzleInput = "input.txt"
 )
 
+func copyMap(m map[Pos]*Entity) map[Pos]*Entity {
+	m2 := map[Pos]*Entity{}
+	for k, v := range m {
+		a := *v
+		m2[k] = &a
+	}
+	return m2
+}
+
 type (
 	Pos struct {
 		x, y int
 	}
+
+	PosList []Pos
 )
+
+func (s PosList) Len() int {
+	return len(s)
+}
+func (s PosList) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s PosList) Less(i, j int) bool {
+	return s[i].Less(s[j])
+}
 
 func (p Pos) Less(other Pos) bool {
 	if p.y == other.y {
@@ -43,6 +64,7 @@ type (
 		pos    Pos
 		health int
 		attack int
+		debug  bool
 	}
 
 	EntityByPos []*Entity
@@ -85,6 +107,7 @@ type (
 		elfs    map[Pos]*Entity
 		goblins map[Pos]*Entity
 		board   Board
+		elfDied bool
 	}
 )
 
@@ -93,6 +116,7 @@ func NewGame(elfs, goblins map[Pos]*Entity, board [][]byte) *Game {
 		elfs:    elfs,
 		goblins: goblins,
 		board:   Board(board),
+		elfDied: false,
 	}
 }
 
@@ -242,18 +266,19 @@ func (h *PosHeap) Pop() interface{} {
 func (h *PosHeap) Add(g int, pos Pos) {
 	h.scores[pos] = Score{
 		g: g,
-		h: pos.Manhattan(h.start),
+		//h: pos.Manhattan(h.start),
+		h: 0,
 	}
 	heap.Push(h, pos)
 }
-func (h *PosHeap) Take() (*Pos, int) {
+func (h *PosHeap) Take() (Pos, int) {
 	if h.Len() == 0 {
-		return nil, 0
+		return Pos{}, -1
 	}
 	k := heap.Pop(h).(Pos)
 	ks := h.scores[k].g
 	delete(h.scores, k)
-	return &k, ks
+	return k, ks
 }
 func (h *PosHeap) Has(pos Pos) bool {
 	_, ok := h.scores[pos]
@@ -271,58 +296,60 @@ func (ps PosSet) Add(pos Pos) {
 func (g *Game) RemoveEntity(e *Entity) {
 	if e.elf {
 		delete(g.elfs, e.pos)
+		g.elfDied = true
 	} else {
 		delete(g.goblins, e.pos)
 	}
 }
 
-func (g *Game) EntityPath(start, goal Pos) (*Pos, int) {
+func (g *Game) EntityPath(start, goal Pos) (Pos, int) {
 	closed := PosSet{}
 	open := NewPosHeap(start)
 	open.Add(0, goal)
-	for current, currentg := open.Take(); current != nil; current, currentg = open.Take() {
-		if start.Manhattan(*current) < 2 {
+	for current, currentg := open.Take(); currentg > -1; current, currentg = open.Take() {
+		if start.Manhattan(current) < 2 {
 			return current, currentg + 1
 		}
-		closed.Add(*current)
-		k := g.AdjacentFree(*current)
+		closed.Add(current)
+		k := g.AdjacentFree(current)
 		for _, i := range k {
 			if !closed.Has(i) && !open.Has(i) {
 				open.Add(currentg+1, i)
 			}
 		}
 	}
-	return nil, 0
+	return Pos{}, -1
 }
 
 func (g *Game) EntityMove(e *Entity, enemies map[Pos]*Entity) {
-	var next *Pos
-	var target *Pos
-	cost := 99999999
+	inRange := PosList{}
 	for k, _ := range enemies {
-		for _, i := range g.AdjacentFree(k) {
-			a := i
-			if target != nil && !a.Less(*target) {
-				continue
-			}
-			if p, c := g.EntityPath(e.pos, i); p != nil && c <= cost {
-				next = p
-				target = &a
-				cost = c
-			}
-		}
+		inRange = append(inRange, g.AdjacentFree(k)...)
 	}
-	if next == nil {
+	sort.Sort(inRange)
+
+	next := Pos{}
+	cost := 99999999
+	for _, i := range inRange {
+		p, c := g.EntityPath(e.pos, i)
+		if c < 0 || c >= cost {
+			continue
+		}
+		next = p
+		cost = c
+	}
+	if cost == 99999999 {
 		return
 	}
+
 	if e.elf {
 		delete(g.elfs, e.pos)
-		g.elfs[*next] = e
+		g.elfs[next] = e
 	} else {
 		delete(g.goblins, e.pos)
-		g.goblins[*next] = e
+		g.goblins[next] = e
 	}
-	e.pos = *next
+	e.pos = next
 }
 
 func (g *Game) EntityAttack(e *Entity, enemies []*Entity) {
@@ -343,7 +370,6 @@ func (g *Game) EntityAttack(e *Entity, enemies []*Entity) {
 func (g *Game) TickEntity(e *Entity, enemies map[Pos]*Entity) {
 	adjacentEnemies := g.AdjacentEnemy(e.pos, e.elf)
 	if len(adjacentEnemies) == 0 {
-		// move
 		g.EntityMove(e, enemies)
 		adjacentEnemies = g.AdjacentEnemy(e.pos, e.elf)
 	}
@@ -354,7 +380,7 @@ func (g *Game) TickEntity(e *Entity, enemies map[Pos]*Entity) {
 	g.EntityAttack(e, adj)
 }
 
-func (g *Game) Tick() bool {
+func (g *Game) Tick(part2 bool) (bool, bool) {
 	all := make([]*Entity, 0, len(g.elfs)+len(g.goblins))
 	for _, v := range g.elfs {
 		all = append(all, v)
@@ -369,7 +395,7 @@ func (g *Game) Tick() bool {
 		}
 
 		if len(g.elfs) == 0 || len(g.goblins) == 0 {
-			return true
+			return true, false
 		}
 
 		if i.elf {
@@ -377,8 +403,11 @@ func (g *Game) Tick() bool {
 		} else {
 			g.TickEntity(i, g.elfs)
 		}
+		if part2 && g.elfDied {
+			return false, true
+		}
 	}
-	return false
+	return false, false
 }
 
 func (g *Game) Print() {
@@ -394,7 +423,13 @@ func (g *Game) Print() {
 	for k := range g.goblins {
 		board[k.y][k.x] = 'G'
 	}
-	for _, i := range board {
+	fmt.Print("   ")
+	for i := 0; i < len(board[0]); i++ {
+		fmt.Print(i % 10)
+	}
+	fmt.Println()
+	for n, i := range board {
+		fmt.Printf("%2d ", n)
 		fmt.Println(string(i))
 	}
 }
@@ -439,17 +474,24 @@ func main() {
 					x: x,
 					y: y,
 				}
-				goblins[pos] = NewEntity(pos, false)
+				k := NewEntity(pos, false)
+				goblins[pos] = k
 				board[y][x] = '.'
 			}
 		}
 	}
 
-	game := NewGame(elfs, goblins, board)
+	debug := false
+
+	game := NewGame(copyMap(elfs), copyMap(goblins), board)
 
 	i := 0
-	for done := game.Tick(); !done; done = game.Tick() {
+	for done, _ := game.Tick(false); !done; done, _ = game.Tick(false) {
 		i++
+		if debug {
+			fmt.Println(i)
+			game.Print()
+		}
 	}
 	totalHealth := 0
 	for _, i := range game.elfs {
@@ -458,6 +500,36 @@ func main() {
 	for _, i := range game.goblins {
 		totalHealth += i.health
 	}
-	fmt.Println(i)
+	fmt.Println("rounds:", i)
 	fmt.Println(i * totalHealth)
+
+	part2(elfs, goblins, board)
+}
+
+func part2(elfs, goblins map[Pos]*Entity, board [][]byte) {
+	for attackVal := 4; ; attackVal++ {
+		elfNum := len(elfs)
+		e := copyMap(elfs)
+		for _, v := range e {
+			v.attack = attackVal
+		}
+		game := NewGame(e, copyMap(goblins), board)
+		i := 0
+		for done, elfDied := game.Tick(true); !done && !elfDied; done, elfDied = game.Tick(true) {
+			i++
+		}
+		if len(game.elfs) != elfNum {
+			continue
+		}
+		totalHealth := 0
+		for _, i := range game.elfs {
+			totalHealth += i.health
+		}
+		for _, i := range game.goblins {
+			totalHealth += i.health
+		}
+		fmt.Println("attack:", attackVal)
+		fmt.Println(i * totalHealth)
+		break
+	}
 }
