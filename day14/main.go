@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -9,31 +10,18 @@ const (
 	puzzleInput2 = "540391"
 )
 
-func split(b byte) []byte {
-	if b > 9 {
-		return []byte{b / 10, b % 10}
-	}
-	return []byte{b % 10}
-}
-
-func equalBytes(a, b []byte) bool {
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
+func split(b byte) (byte, byte) {
+	return b / 10, b % 10
 }
 
 func cmp(state, target []byte) int {
-	if len(state) < len(target)+1 {
+	sl := len(state)
+	tl := len(target)
+	if sl < tl+1 {
 		return -1
 	}
-	l := len(state) - len(target)
-	if equalBytes(state[l-1:len(state)-1], target) {
-		return l
-	}
-	if equalBytes(state[l:], target) {
+	l := sl - tl
+	if bytes.Equal(state[l-1:sl-1], target) || bytes.Equal(state[l:], target) {
 		return l
 	}
 	return -1
@@ -44,7 +32,11 @@ func main() {
 	count2 := 1
 	state := []byte{3, 7}
 	for len(state) < puzzleInput+10 {
-		state = append(state, split(state[count1]+state[count2])...)
+		a, b := split(state[count1] + state[count2])
+		if a > 0 {
+			state = append(state, a)
+		}
+		state = append(state, b)
 		count1 = (count1 + int(state[count1]) + 1) % len(state)
 		count2 = (count2 + int(state[count2]) + 1) % len(state)
 	}
@@ -64,7 +56,11 @@ func main() {
 	count2 = 1
 	k := -1
 	for ; k < 0; k = cmp(state, target) {
-		state = append(state, split(state[count1]+state[count2])...)
+		a, b := split(state[count1] + state[count2])
+		if a > 0 {
+			state = append(state, a)
+		}
+		state = append(state, b)
 		count1 = (count1 + int(state[count1]) + 1) % len(state)
 		count2 = (count2 + int(state[count2]) + 1) % len(state)
 	}
