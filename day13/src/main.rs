@@ -1,43 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::error::Error;
-use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
 const PUZZLEINPUT: &str = "input.txt";
 
-#[derive(Debug)]
-struct BasicError {
-    msg: String,
-}
-
-impl BasicError {
-    fn new(msg: &str) -> BasicError {
-        BasicError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for BasicError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl Error for BasicError {
-    fn description(&self) -> &str {
-        &self.msg
-    }
-
-    fn cause(&self) -> Option<&Error> {
-        None
-    }
-}
-
-#[derive(Clone, Copy)]
 enum Turn {
     Left,
     Straight,
@@ -192,10 +160,6 @@ impl Sim {
         }
     }
 
-    fn add_cart(&mut self, c: Cart) {
-        self.carts.push(c);
-    }
-
     fn tick(mut self) -> Self {
         let mut crashed = HashSet::new();
         for n in 0..self.carts.len() {
@@ -239,15 +203,19 @@ impl Sim {
     }
 }
 
-fn main() -> Result<(), Box<Error>> {
-    let file = File::open(PUZZLEINPUT)?;
+fn main() {
+    let file = File::open(PUZZLEINPUT).expect("Failed to open file");
     let reader = BufReader::new(file);
 
     let mut sim = {
         let mut carts = Vec::new();
         let mut board = Vec::new();
         for line in reader.lines() {
-            board.push(line?.chars().collect::<Vec<_>>());
+            board.push(
+                line.expect("Failed to read line")
+                    .chars()
+                    .collect::<Vec<_>>(),
+            );
         }
         for (y, row) in board.iter_mut().enumerate() {
             for (x, i) in row.iter_mut().enumerate() {
@@ -271,6 +239,4 @@ fn main() -> Result<(), Box<Error>> {
 
     let last_cart = &sim.carts[0];
     println!("{} {}", last_cart.x, last_cart.y);
-
-    Ok(())
 }

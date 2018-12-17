@@ -1,42 +1,9 @@
-extern crate regex;
-
 use regex::Regex;
-use std::error::Error;
-use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
 const PUZZLEINPUT: &str = "input.txt";
-
-#[derive(Debug)]
-struct BasicError {
-    msg: String,
-}
-
-impl BasicError {
-    fn new(msg: &str) -> BasicError {
-        BasicError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for BasicError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl Error for BasicError {
-    fn description(&self) -> &str {
-        &self.msg
-    }
-
-    fn cause(&self) -> Option<&Error> {
-        None
-    }
-}
 
 struct PointList {
     points: Vec<(isize, isize, isize, isize)>,
@@ -98,39 +65,42 @@ impl PointList {
     }
 }
 
-fn main() -> Result<(), Box<Error>> {
+fn main() {
     let re = Regex::new(
         r"^.*< ?(?P<posx>-?\d+),  ?(?P<posy>-?\d+)>.*< ?(?P<velx>-?\d+),  ?(?P<vely>-?\d+)>$",
-    )?;
-    let file = File::open(PUZZLEINPUT)?;
+    )
+    .expect("Invalid regex");
+    let file = File::open(PUZZLEINPUT).expect("Failed to open file");
     let reader = BufReader::new(file);
 
     let mut points = PointList::new();
     for line in reader.lines() {
-        let l = line?;
-        let caps = re
-            .captures(&l)
-            .ok_or(BasicError::new("Regex cannot capture line"))?;
+        let l = line.expect("Failed to read line");
+        let caps = re.captures(&l).expect("Regex cannot capture line");
         let posx = caps
             .name("posx")
-            .ok_or(BasicError::new("Posx does not exist"))?
+            .expect("Posx does not exist")
             .as_str()
-            .parse::<isize>()?;
+            .parse::<isize>()
+            .expect("Failed to parse posx");
         let posy = caps
             .name("posy")
-            .ok_or(BasicError::new("Posy does not exist"))?
+            .expect("Posy does not exist")
             .as_str()
-            .parse::<isize>()?;
+            .parse::<isize>()
+            .expect("Failed to parse posy");
         let velx = caps
             .name("velx")
-            .ok_or(BasicError::new("Velx does not exist"))?
+            .expect("Velx does not exist")
             .as_str()
-            .parse::<isize>()?;
+            .parse::<isize>()
+            .expect("Failed to parse velx");
         let vely = caps
             .name("vely")
-            .ok_or(BasicError::new("Vely does not exist"))?
+            .expect("Vely does not exist")
             .as_str()
-            .parse::<isize>()?;
+            .parse::<isize>()
+            .expect("Failed to parse vely");
         points.add((posx, posy, velx, vely));
     }
 
@@ -138,6 +108,4 @@ fn main() -> Result<(), Box<Error>> {
     points.step(step);
     points.print();
     println!("Step: {}", step);
-
-    Ok(())
 }
