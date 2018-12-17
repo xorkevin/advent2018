@@ -3,8 +3,6 @@ extern crate regex;
 use regex::Regex;
 use std::cmp;
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::error;
-use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -12,36 +10,6 @@ use std::io::BufReader;
 const PUZZLEINPUT: &str = "input.txt";
 const NUM_WORKERS: usize = 5;
 
-#[derive(Debug)]
-struct BasicError {
-    msg: String,
-}
-
-impl BasicError {
-    fn new(msg: &str) -> BasicError {
-        BasicError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for BasicError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl error::Error for BasicError {
-    fn description(&self) -> &str {
-        &self.msg
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        None
-    }
-}
-
-#[derive(Debug)]
 struct Task {
     id: char,
     deps: Vec<char>,
@@ -98,7 +66,6 @@ impl PartialOrd for Task {
     }
 }
 
-#[derive(Debug)]
 struct Process<'a> {
     task: &'a Task,
     cost: u32,
@@ -113,33 +80,31 @@ impl<'a> Process<'a> {
     }
 }
 
-fn main() -> Result<(), Box<error::Error>> {
-    let re = Regex::new(r"^Step (?P<dep>[A-Z]) .* (?P<next>[A-Z]) .*$")?;
-    let file = File::open(PUZZLEINPUT)?;
+fn main() {
+    let re = Regex::new(r"^Step (?P<dep>[A-Z]) .* (?P<next>[A-Z]) .*$").expect("Invalid regex");
+    let file = File::open(PUZZLEINPUT).expect("Failed to open file");
     let reader = BufReader::new(file);
 
     let (tasks, start) = {
         let mut tasks = HashMap::new();
         let mut nextset = HashSet::new();
         for line in reader.lines() {
-            let l = line?;
-            let caps = re
-                .captures(&l)
-                .ok_or(BasicError::new("Regex cannot capture line"))?;
+            let l = line.expect("Failed to read line");
+            let caps = re.captures(&l).expect("Regex cannot capture line");
             let dep = caps
                 .name("dep")
-                .ok_or(BasicError::new("Dep does not exist"))?
+                .expect("Dep does not exist")
                 .as_str()
                 .chars()
                 .next()
-                .ok_or(BasicError::new("Failed to get dep character"))?;
+                .expect("Failed to get dep character");
             let next = caps
                 .name("next")
-                .ok_or(BasicError::new("Dep does not exist"))?
+                .expect("Dep does not exist")
                 .as_str()
                 .chars()
                 .next()
-                .ok_or(BasicError::new("Failed to get next character"))?;
+                .expect("Failed to get next character");
 
             nextset.insert(next);
             {
@@ -165,7 +130,7 @@ fn main() -> Result<(), Box<error::Error>> {
         let mut order = Vec::new();
         let mut openlist = BinaryHeap::new();
         for i in start.iter() {
-            openlist.push(tasks.get(i).ok_or("Failed to get task")?);
+            openlist.push(tasks.get(i).expect("Failed to get task"));
         }
         let mut closedlist = HashSet::new();
         while let Some(i) = openlist.pop() {
@@ -175,7 +140,7 @@ fn main() -> Result<(), Box<error::Error>> {
                 if closedlist.contains(&taskid) {
                     continue;
                 }
-                let task = tasks.get(&taskid).ok_or("Failed to get task")?;
+                let task = tasks.get(&taskid).expect("Failed to get task");
                 if !task.can_start(&closedlist) {
                     continue;
                 }
@@ -190,7 +155,7 @@ fn main() -> Result<(), Box<error::Error>> {
 
         let mut openlist = BinaryHeap::new();
         for i in start.iter() {
-            openlist.push(tasks.get(i).ok_or("Failed to get task")?);
+            openlist.push(tasks.get(i).expect("Failed to get task"));
         }
         let mut closedlist = HashSet::new();
         let mut current_work = Vec::new();
@@ -209,7 +174,7 @@ fn main() -> Result<(), Box<error::Error>> {
             let min_time = current_work
                 .iter()
                 .min_by_key(|x| x.cost)
-                .ok_or("Failed to find minimum cost")?
+                .expect("Failed to find minimum cost")
                 .cost;
             elapsed += min_time;
             let mut next_work_ids = HashSet::new();
@@ -235,7 +200,7 @@ fn main() -> Result<(), Box<error::Error>> {
                     if closedlist.contains(&taskid) {
                         continue;
                     }
-                    let task = tasks.get(&taskid).ok_or("Failed to get task")?;
+                    let task = tasks.get(&taskid).expect("Failed to get task");
                     if !task.can_start(&closedlist) {
                         continue;
                     }
@@ -245,6 +210,4 @@ fn main() -> Result<(), Box<error::Error>> {
         }
         println!("{}", elapsed);
     }
-
-    Ok(())
 }

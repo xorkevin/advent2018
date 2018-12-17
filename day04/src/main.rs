@@ -1,45 +1,14 @@
 use std::collections::HashMap;
-use std::error;
-use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
 const PUZZLEINPUT: &str = "input.txt";
 
-#[derive(Debug)]
-struct BasicError {
-    msg: String,
-}
-
-impl BasicError {
-    fn new(msg: &str) -> BasicError {
-        BasicError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for BasicError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl error::Error for BasicError {
-    fn description(&self) -> &str {
-        &self.msg
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        None
-    }
-}
-
-fn main() -> Result<(), Box<error::Error>> {
+fn main() {
     let re = regex::Regex::new(r"^\[\d+-\d+-\d+ \d+:(?P<minute>\d+)\] (?P<action>[A-Za-z0-9# ]+)$")
-        .unwrap();
-    let file = File::open(PUZZLEINPUT)?;
+        .expect("Invalid regex");
+    let file = File::open(PUZZLEINPUT).expect("Failed to open file");
     let reader = BufReader::new(file);
 
     let timesheet = {
@@ -47,21 +16,26 @@ fn main() -> Result<(), Box<error::Error>> {
         let mut current_guard = 0;
         let mut asleep_min = 0;
         for line in reader.lines() {
-            let l = line?;
-            let caps = re.captures(&l).ok_or(BasicError::new("Invalid input 1"))?;
+            let l = line.expect("Failed to read line");
+            let caps = re.captures(&l).expect("Invalid input 1");
             let minute = caps
                 .name("minute")
-                .ok_or(BasicError::new("Invalid input 2"))?
+                .expect("Invalid input 2")
                 .as_str()
-                .parse::<usize>()?;
+                .parse::<usize>()
+                .expect("Failed to parse minute");
             let action = caps
                 .name("action")
-                .ok_or(BasicError::new("Invalid input 3"))?
+                .expect("Invalid input 3")
                 .as_str()
                 .split_whitespace()
                 .collect::<Vec<_>>();
             match action[0] {
-                "Guard" => current_guard = action[1][1..].parse::<usize>()?,
+                "Guard" => {
+                    current_guard = action[1][1..]
+                        .parse::<usize>()
+                        .expect("Failed to parse guard")
+                }
                 "falls" => asleep_min = minute,
                 "wakes" => {
                     let guard = timesheet.entry(current_guard).or_insert((0, vec![0; 60]));
@@ -71,7 +45,7 @@ fn main() -> Result<(), Box<error::Error>> {
                         times[i] += 1;
                     }
                 }
-                _ => Err(BasicError::new("Invalid input 4"))?,
+                _ => panic!("Invalid input 4"),
             }
         }
         timesheet
@@ -81,12 +55,12 @@ fn main() -> Result<(), Box<error::Error>> {
         let (guardid, (_, guardtimes)) = timesheet
             .iter()
             .max_by_key(|(_, (x, _))| x)
-            .ok_or(BasicError::new("Failed to find max"))?;
+            .expect("Failed to find max");
         let (minute, _) = guardtimes
             .iter()
             .enumerate()
             .max_by_key(|(_, &x)| x)
-            .ok_or(BasicError::new("Failed to find max"))?;
+            .expect("Failed to find max");
         println!("{}", guardid * minute);
     };
 
@@ -98,10 +72,9 @@ fn main() -> Result<(), Box<error::Error>> {
                     Some(x) => Some((guardid, x)),
                     _ => None,
                 }
-            }).max_by_key(|(_, (_, &x))| x)
-            .ok_or(BasicError::new("Failed to find max"))?;
+            })
+            .max_by_key(|(_, (_, &x))| x)
+            .expect("Failed to find max");
         println!("{}", guardid * minute);
     };
-
-    Ok(())
 }

@@ -1,43 +1,12 @@
 use std::collections::HashSet;
-use std::error;
-use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
 const PUZZLEINPUT: &str = "input.txt";
-const GRID_START: isize = -360;
-const GRID_END: isize = 720;
+const GRID_START: isize = -1;
+const GRID_END: isize = 361;
 const DIST_CAP: isize = 10000;
-
-#[derive(Debug)]
-struct BasicError {
-    msg: String,
-}
-
-impl BasicError {
-    fn new(msg: &str) -> BasicError {
-        BasicError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for BasicError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl error::Error for BasicError {
-    fn description(&self) -> &str {
-        &self.msg
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        None
-    }
-}
 
 struct Point(isize, isize);
 
@@ -70,20 +39,21 @@ fn combined_distance(p: &Point, points: &Vec<Point>) -> isize {
     points.iter().fold(0, |acc, i| acc + distance(p, i))
 }
 
-fn main() -> Result<(), Box<error::Error>> {
-    let file = File::open(PUZZLEINPUT)?;
+fn main() {
+    let file = File::open(PUZZLEINPUT).expect("Failed to open file");
     let reader = BufReader::new(file);
 
     let points = reader
         .lines()
-        .filter_map(|x| x.ok())
         .map(|x| {
             let k = x
+                .expect("Failed to read line")
                 .split(", ")
-                .filter_map(|x| x.parse::<isize>().ok())
+                .map(|x| x.parse::<isize>().expect("Failed to parse num"))
                 .collect::<Vec<_>>();
             Point(k[0], k[1])
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     let mut in_region = 0;
     let mut edge = HashSet::new();
@@ -111,11 +81,9 @@ fn main() -> Result<(), Box<error::Error>> {
             .enumerate()
             .filter(|(n, _)| !edge.contains(n))
             .max_by_key(|(_, &x)| x)
-            .ok_or(BasicError::new("Cannot find max"))?
+            .expect("Cannot find max")
             .1
     );
 
     println!("{}", in_region);
-
-    Ok(())
 }

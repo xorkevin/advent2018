@@ -1,7 +1,3 @@
-extern crate regex;
-
-use std::error;
-use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
@@ -9,74 +5,51 @@ use std::io::prelude::*;
 const PUZZLEINPUT: &str = "input.txt";
 const WIDTH: usize = 1000;
 
-#[derive(Debug)]
-struct BasicError {
-    msg: String,
-}
-
-impl BasicError {
-    fn new(msg: &str) -> BasicError {
-        BasicError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for BasicError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl error::Error for BasicError {
-    fn description(&self) -> &str {
-        &self.msg
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        None
-    }
-}
-
-fn main() -> Result<(), Box<error::Error>> {
-    let file = fs::File::open(PUZZLEINPUT)?;
-    let reader = io::BufReader::new(file);
-
+fn main() {
     let re = regex::Regex::new(
         r"^#(?P<claimid>\d+) @ (?P<col>\d+),(?P<row>\d+): (?P<width>\d+)x(?P<height>\d+)$",
-    ).unwrap();
+    )
+    .expect("Invalid regex");
+    let file = fs::File::open(PUZZLEINPUT).expect("Failed to open file");
+    let reader = io::BufReader::new(file);
+
     let mut claims_count = vec![0; WIDTH * WIDTH];
     let mut claims = vec![0; WIDTH * WIDTH];
     let mut banned_claims = vec![false; 1253];
 
     for line in reader.lines() {
-        let s = line?;
-        let caps = re.captures(&s).ok_or(BasicError::new("Invalid input"))?;
+        let s = line.expect("Failed to read line");
+        let caps = re.captures(&s).expect("Invalid input");
         let claimid = caps
             .name("claimid")
-            .ok_or(BasicError::new("Invalid input"))?
+            .expect("Invalid input")
             .as_str()
-            .parse::<usize>()?;
+            .parse::<usize>()
+            .expect("Failed to parse claimid");
         let col = caps
             .name("col")
-            .ok_or(BasicError::new("Invalid input"))?
+            .expect("Invalid input")
             .as_str()
-            .parse::<usize>()?;
+            .parse::<usize>()
+            .expect("Failed to parse col");
         let row = caps
             .name("row")
-            .ok_or(BasicError::new("Invalid input"))?
+            .expect("Invalid input")
             .as_str()
-            .parse::<usize>()?;
+            .parse::<usize>()
+            .expect("Failed to parse row");
         let width = caps
             .name("width")
-            .ok_or(BasicError::new("Invalid input"))?
+            .expect("Invalid input")
             .as_str()
-            .parse::<usize>()?;
+            .parse::<usize>()
+            .expect("Failed to parse width");
         let height = caps
             .name("height")
-            .ok_or(BasicError::new("Invalid input"))?
+            .expect("Invalid input")
             .as_str()
-            .parse::<usize>()?;
+            .parse::<usize>()
+            .expect("Failed to parse height");
         for i in row..(row + height) {
             for j in col..(col + width) {
                 claims_count[i * WIDTH + j] += 1;
@@ -100,6 +73,4 @@ fn main() -> Result<(), Box<error::Error>> {
     {
         println!("{}", i + 1);
     }
-
-    Ok(())
 }

@@ -1,19 +1,18 @@
 use std::collections::HashMap;
-use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
 const PUZZLEINPUT: &str = "input.txt";
 
-fn main() -> Result<(), Box<Error>> {
-    let file = File::open(PUZZLEINPUT)?;
+fn main() {
+    let file = File::open(PUZZLEINPUT).expect("Failed to open file");
     let reader = BufReader::new(file);
 
     let lines = {
         let mut lines = Vec::new();
         for line in reader.lines() {
-            lines.push(line?);
+            lines.push(line.expect("Failed to read line"));
         }
         lines
     };
@@ -39,12 +38,10 @@ fn main() -> Result<(), Box<Error>> {
         for line2 in lines.iter() {
             if is_single_diff(line1, line2) {
                 println!("{}", remove_single_diff(line1, line2));
-                return Ok(());
+                return;
             }
         }
     }
-
-    Ok(())
 }
 
 fn is_twice_or_thrice(line: &str) -> (bool, bool) {

@@ -1,4 +1,3 @@
-use std::error;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -9,7 +8,8 @@ fn is_reactive(a: &char, b: &char) -> bool {
 }
 
 fn reduce(state: &Vec<char>) -> Vec<char> {
-    state.iter().fold(Vec::new(), |mut acc, i| {
+    let mut acc = Vec::new();
+    for i in state.iter() {
         if {
             match acc.last() {
                 Some(x) => is_reactive(i, x),
@@ -20,20 +20,19 @@ fn reduce(state: &Vec<char>) -> Vec<char> {
         } else {
             acc.push(*i);
         }
-        acc
-    })
+    }
+    acc
 }
 
 fn is_not_char(a: &char, b: &char) -> bool {
     a != b && a.to_ascii_uppercase() != b.to_ascii_uppercase()
 }
 
-fn main() -> Result<(), Box<error::Error>> {
-    let file = File::open(PUZZLEINPUT)?;
+fn main() {
+    let file = File::open(PUZZLEINPUT).expect("Failed to open file");
     let init_state = file
         .bytes()
-        .filter_map(|x| x.ok())
-        .map(|x| x as char)
+        .map(|x| x.expect("Failed to read byte") as char)
         .filter(char::is_ascii_alphanumeric)
         .collect::<Vec<_>>();
 
@@ -48,12 +47,11 @@ fn main() -> Result<(), Box<error::Error>> {
                 .filter(|x| is_not_char(x, &c))
                 .map(|&x| x)
                 .collect::<Vec<_>>(),
-        ).len();
+        )
+        .len();
         if l < max {
             max = l;
         }
     }
     println!("{}", max);
-
-    Ok(())
 }
