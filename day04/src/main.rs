@@ -67,11 +67,15 @@ fn main() {
     {
         let (guardid, (minute, _)) = timesheet
             .iter()
-            .filter_map(|(guardid, (_, times))| {
-                match times.iter().enumerate().max_by_key(|(_, &x)| x) {
-                    Some(x) => Some((guardid, x)),
-                    _ => None,
-                }
+            .map(|(guardid, (_, times))| {
+                (
+                    guardid,
+                    times
+                        .iter()
+                        .enumerate()
+                        .max_by_key(|(_, &x)| x)
+                        .expect("Failed to find max"),
+                )
             })
             .max_by_key(|(_, (_, &x))| x)
             .expect("Failed to find max");
