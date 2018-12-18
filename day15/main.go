@@ -202,34 +202,25 @@ func (g *Game) AdjacentEnemy(pos Pos, elf bool) []Pos {
 }
 
 type (
-	Score struct {
-		g int
-		h int
-	}
-
 	PosScore struct {
 		pos   Pos
-		score Score
+		score int
 	}
 
 	PosHeap struct {
 		start  Pos
 		list   []Pos
-		scores map[Pos]Score
+		scores map[Pos]int
 	}
 
 	PosSet map[Pos]struct{}
 )
 
-func (s Score) f() int {
-	return s.g + s.h
-}
-
 func NewPosHeap(start Pos) *PosHeap {
 	return &PosHeap{
 		start:  start,
 		list:   []Pos{},
-		scores: map[Pos]Score{},
+		scores: map[Pos]int{},
 	}
 }
 
@@ -241,15 +232,10 @@ func (h PosHeap) Less(i, j int) bool {
 	b := h.list[j]
 	as := h.scores[a]
 	bs := h.scores[b]
-	af := as.f()
-	bf := bs.f()
-	if af == bf {
-		if as.h == bs.h {
-			return a.Less(b)
-		}
-		return as.h < bs.h
+	if as == bs {
+		return a.Less(b)
 	}
-	return af < bf
+	return as < bs
 }
 func (h PosHeap) Swap(i, j int) {
 	h.list[i], h.list[j] = h.list[j], h.list[i]
@@ -264,10 +250,7 @@ func (h *PosHeap) Pop() interface{} {
 	return k
 }
 func (h *PosHeap) Add(g int, pos Pos) {
-	h.scores[pos] = Score{
-		g: g,
-		h: 0,
-	}
+	h.scores[pos] = g
 	heap.Push(h, pos)
 }
 func (h *PosHeap) Take() (Pos, int) {
@@ -275,7 +258,7 @@ func (h *PosHeap) Take() (Pos, int) {
 		return Pos{}, -1
 	}
 	k := heap.Pop(h).(Pos)
-	ks := h.scores[k].g
+	ks := h.scores[k]
 	delete(h.scores, k)
 	return k, ks
 }
@@ -314,20 +297,8 @@ func (g *Game) EntityPath(start Pos, goal PosSet) (Pos, int) {
 		closed.Add(current)
 		k := g.AdjacentFree(current)
 		for _, i := range k {
-			if !closed.Has(i) {
-				if !open.Has(i) {
-					open.Add(currentg+1, i)
-				} else if currentg+1 < open.scores[i].g {
-					for n, j := range open.list {
-						if i == j {
-							node := open.scores[i]
-							node.g = currentg + 1
-							open.scores[i] = node
-							heap.Fix(open, n)
-							break
-						}
-					}
-				}
+			if !closed.Has(i) && !open.Has(i) {
+				open.Add(currentg+1, i)
 			}
 		}
 	}
