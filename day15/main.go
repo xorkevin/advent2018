@@ -264,10 +264,13 @@ func (h *PosHeap) Pop() interface{} {
 	return k
 }
 func (h *PosHeap) Add(g int, pos Pos) {
+	heuristic := pos.Manhattan(h.start)
+	if heuristic < 17 {
+		heuristic = 0
+	}
 	h.scores[pos] = Score{
 		g: g,
-		//h: pos.Manhattan(h.start),
-		h: 0,
+		h: heuristic,
 	}
 	heap.Push(h, pos)
 }
@@ -302,10 +305,12 @@ func (g *Game) RemoveEntity(e *Entity) {
 	}
 }
 
-func (g *Game) EntityPath(start, goal Pos) (Pos, int) {
+func (g *Game) EntityPath(start Pos, goal PosSet) (Pos, int) {
 	closed := PosSet{}
 	open := NewPosHeap(start)
-	open.Add(0, goal)
+	for k, _ := range goal {
+		open.Add(0, k)
+	}
 	for current, currentg := open.Take(); currentg > -1; current, currentg = open.Take() {
 		if start.Manhattan(current) < 2 {
 			return current, currentg + 1
@@ -322,23 +327,15 @@ func (g *Game) EntityPath(start, goal Pos) (Pos, int) {
 }
 
 func (g *Game) EntityMove(e *Entity, enemies map[Pos]*Entity) {
-	inRange := PosList{}
+	inRange := PosSet{}
 	for k, _ := range enemies {
-		inRange = append(inRange, g.AdjacentFree(k)...)
-	}
-	sort.Sort(inRange)
-
-	next := Pos{}
-	cost := 99999999
-	for _, i := range inRange {
-		p, c := g.EntityPath(e.pos, i)
-		if c < 0 || c >= cost {
-			continue
+		for _, i := range g.AdjacentFree(k) {
+			inRange.Add(i)
 		}
-		next = p
-		cost = c
 	}
-	if cost == 99999999 {
+
+	next, cost := g.EntityPath(e.pos, inRange)
+	if cost < 0 {
 		return
 	}
 
