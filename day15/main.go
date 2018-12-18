@@ -264,13 +264,9 @@ func (h *PosHeap) Pop() interface{} {
 	return k
 }
 func (h *PosHeap) Add(g int, pos Pos) {
-	heuristic := pos.Manhattan(h.start)
-	if heuristic < 17 {
-		heuristic = 0
-	}
 	h.scores[pos] = Score{
 		g: g,
-		h: heuristic,
+		h: 0,
 	}
 	heap.Push(h, pos)
 }

@@ -221,7 +221,7 @@ impl<'a> Game<'a> {
         )
     }
 
-    fn tick(&mut self) -> bool {
+    fn tick(&mut self, part2: bool) -> (bool, bool) {
         let mut all = self
             .elfs
             .values()
@@ -239,7 +239,7 @@ impl<'a> Game<'a> {
                 None => continue,
             };
             if self.elfs.len() == 0 || self.goblins.len() == 0 {
-                return false;
+                return (false, false);
             }
 
             let (next, target) = self.tick_entity(entity);
@@ -269,6 +269,9 @@ impl<'a> Game<'a> {
                         if is_elf {
                             self.goblins.remove(&k).expect("Failed to remove goblin");
                         } else {
+                            if part2 {
+                                return (true, true);
+                            }
                             self.elfs.remove(&k).expect("Failed to remove elf");
                         }
                     }
@@ -276,7 +279,7 @@ impl<'a> Game<'a> {
                 None => (),
             }
         }
-        true
+        (true, false)
     }
 
     fn print(&self) {
@@ -324,13 +327,38 @@ fn main() {
         (elfs, goblins, board)
     };
 
-    let mut game = Game::new(elfs.clone(), goblins.clone(), &board);
+    let game = Game::new(elfs.clone(), goblins.clone(), &board);
+    let (part1, _) = play_game(game, false);
+    println!("{}", part1);
+
+    for i in 4.. {
+        let mut e = elfs.clone();
+        for j in e.values_mut() {
+            j.attack = i;
+        }
+        let game = Game::new(e, goblins.clone(), &board);
+        let (score, next) = play_game(game, true);
+        if !next {
+            println!("{}", score);
+            break;
+        }
+    }
+}
+
+fn play_game(mut game: Game, part2: bool) -> (isize, bool) {
     let mut round = 0;
-    while game.tick() {
+    loop {
+        let (c, e) = game.tick(part2);
+        if !c {
+            break;
+        }
+        if part2 && e {
+            return (0, true);
+        }
         round += 1;
     }
     game.print();
     let total_health = game.elfs.values().map(|i| i.health).sum::<isize>()
         + game.goblins.values().map(|i| i.health).sum::<isize>();
-    println!("{}", round * total_health);
+    (round * total_health, false)
 }
