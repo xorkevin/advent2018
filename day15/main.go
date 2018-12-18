@@ -318,8 +318,20 @@ func (g *Game) EntityPath(start Pos, goal PosSet) (Pos, int) {
 		closed.Add(current)
 		k := g.AdjacentFree(current)
 		for _, i := range k {
-			if !closed.Has(i) && !open.Has(i) {
-				open.Add(currentg+1, i)
+			if !closed.Has(i) {
+				if !open.Has(i) {
+					open.Add(currentg+1, i)
+				} else if currentg+1 < open.scores[i].g {
+					for n, j := range open.list {
+						if i == j {
+							node := open.scores[i]
+							node.g = currentg + 1
+							open.scores[i] = node
+							heap.Fix(open, n)
+							break
+						}
+					}
+				}
 			}
 		}
 	}
