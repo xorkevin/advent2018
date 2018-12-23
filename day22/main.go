@@ -94,9 +94,8 @@ func (p *Pos) Right() Pos {
 
 type (
 	Node struct {
-		pos   Pos
+		ipos  IPos
 		g, h  int
-		item  int
 		index int
 	}
 )
@@ -106,38 +105,49 @@ func (n *Node) f() int {
 }
 
 type (
-	PosSet map[Pos]struct{}
+	IPos struct {
+		pos  Pos
+		item int
+	}
+	PosSet map[IPos]struct{}
 )
 
 func NewPosSet() PosSet {
 	return PosSet{}
 }
-func (s PosSet) Has(a Pos) bool {
+func (s PosSet) Has(a IPos) bool {
 	_, ok := s[a]
 	return ok
 }
-func (s PosSet) Add(a Pos) {
+func (s PosSet) Add(a IPos) {
 	s[a] = struct{}{}
 }
 
 type (
 	PosHeap struct {
-		list   []Pos
-		scores map[Pos]*Node
+		list   []IPos
+		scores map[IPos]*Node
 	}
 )
 
 func NewPosHeap() PosHeap {
 	return PosHeap{
-		list:   []Pos{},
-		scores: map[Pos]*Node{},
+		list:   []IPos{},
+		scores: map[IPos]*Node{},
 	}
 }
 func (h PosHeap) Len() int {
 	return len(h.list)
 }
 func (h PosHeap) Less(i, j int) bool {
-	return h.scores[h.list[i]].f() < h.scores[h.list[j]].f()
+	ki := h.scores[h.list[i]]
+	kj := h.scores[h.list[j]]
+	fi := ki.f()
+	fj := kj.f()
+	if fi == fj {
+		return ki.g < kj.g
+	}
+	return fi < fj
 }
 func (h PosHeap) Swap(i, j int) {
 	h.list[i], h.list[j] = h.list[j], h.list[i]
@@ -145,7 +155,7 @@ func (h PosHeap) Swap(i, j int) {
 	h.scores[h.list[j]].index = j
 }
 func (h *PosHeap) Push(x interface{}) {
-	h.list = append(h.list, x.(Pos))
+	h.list = append(h.list, x.(IPos))
 }
 func (h *PosHeap) Pop() interface{} {
 	l := len(h.list)
@@ -154,25 +164,25 @@ func (h *PosHeap) Pop() interface{} {
 	return node
 }
 func (h *PosHeap) Update(n *Node) {
-	n.index = h.scores[n.pos].index
-	h.scores[n.pos] = n
+	n.index = h.scores[n.ipos].index
+	h.scores[n.ipos] = n
 	heap.Fix(h, n.index)
 }
 func (h *PosHeap) Add(n *Node) {
 	n.index = len(h.list)
-	h.scores[n.pos] = n
-	heap.Push(h, n.pos)
+	h.scores[n.ipos] = n
+	heap.Push(h, n.ipos)
 }
-func (h *PosHeap) Remove() (Pos, int, int) {
+func (h *PosHeap) Remove() (IPos, int) {
 	if len(h.list) == 0 {
-		return Pos{}, -1, -1
+		return IPos{}, -1
 	}
-	k := heap.Pop(h).(Pos)
+	k := heap.Pop(h).(IPos)
 	node := h.scores[k]
 	delete(h.scores, k)
-	return node.pos, node.g, node.item
+	return node.ipos, node.g
 }
-func (h *PosHeap) Has(a Pos) bool {
+func (h *PosHeap) Has(a IPos) bool {
 	_, ok := h.scores[a]
 	return ok
 }
@@ -184,64 +194,70 @@ func canUseItem(ra, rb int, item int) bool {
 	return ra != item && rb != item
 }
 
-func commonItem(ra, rb int) int {
-	if canUseItem(ra, rb, 0) {
+func otherItem(region, item int) int {
+	if canUseItem(region, item, 0) {
 		return 0
 	}
-	if canUseItem(ra, rb, 1) {
+	if canUseItem(region, item, 1) {
 		return 1
 	}
-	if canUseItem(ra, rb, 2) {
-		return 2
-	}
-	panic("invalid state")
-	return -1
+	return 2
 }
 
-func heuristic(a, b Pos, item int, cache map[Pos]int) int {
-	k := a.Mnhttn(b)
-	if canUseItem(a.Region(cache), b.Region(cache), item) {
-		return k
-	}
-	return k + 7
+func heuristic(a, b Pos, cache map[Pos]int) int {
+	return a.Mnhttn(b)
 }
 
 func isInBounds(a Pos) bool {
 	return a.x > -1 && a.y > -1
 }
-func neighbors(a Pos) []Pos {
-	k := make([]Pos, 0, 4)
-	up := a.Up()
-	down := a.Down()
-	left := a.Left()
-	right := a.Right()
+func neighbors(a IPos) []IPos {
+	k := make([]IPos, 0, 4)
+	up := a.pos.Up()
+	down := a.pos.Down()
+	left := a.pos.Left()
+	right := a.pos.Right()
 	if isInBounds(up) {
-		k = append(k, up)
+		k = append(k, IPos{
+			pos:  up,
+			item: a.item,
+		})
 	}
 	if isInBounds(down) {
-		k = append(k, down)
+		k = append(k, IPos{
+			pos:  down,
+			item: a.item,
+		})
 	}
 	if isInBounds(left) {
-		k = append(k, left)
+		k = append(k, IPos{
+			pos:  left,
+			item: a.item,
+		})
 	}
 	if isInBounds(right) {
-		k = append(k, right)
+		k = append(k, IPos{
+			pos:  right,
+			item: a.item,
+		})
 	}
 	return k
 }
 
 func astar(start, goal Pos, cache map[Pos]int) (int, int) {
-	path := map[Pos]Pos{}
+	path := map[IPos]IPos{}
 	closed := NewPosSet()
 	open := NewPosHeap()
 	open.Add(&Node{
-		pos:  start,
-		g:    0,
-		h:    heuristic(start, goal, 1, cache),
-		item: 1,
+		ipos: IPos{
+			pos:  start,
+			item: 1,
+		},
+		g: 0,
+		h: heuristic(start, goal, cache),
 	})
-	for current, cost, item := open.Remove(); cost > -1; current, cost, item = open.Remove() {
-		if current == goal {
+	for current, cost := open.Remove(); cost > -1; current, cost = open.Remove() {
+		if current.pos == goal {
 			routeCost := 0
 			for k, ok := path[current]; ok; k, ok = path[k] {
 				routeCost++
@@ -249,29 +265,43 @@ func astar(start, goal Pos, cache map[Pos]int) (int, int) {
 			return cost, routeCost
 		}
 		closed.Add(current)
+		ra := current.pos.Region(cache)
 		for _, i := range neighbors(current) {
 			if closed.Has(i) {
 				continue
 			}
-			nitem := item
-			ncost := cost + 1
-			ra := current.Region(cache)
-			rb := i.Region(cache)
-			if ra != rb && !canUseItem(ra, rb, nitem) {
-				nitem = commonItem(ra, rb)
-				ncost += 7
+			rb := i.pos.Region(cache)
+			if !canUseItem(ra, rb, current.item) {
+				continue
 			}
 			n := &Node{
-				pos:  i,
-				g:    ncost,
-				h:    heuristic(i, goal, nitem, cache),
-				item: nitem,
+				ipos: i,
+				g:    cost + 1,
+				h:    heuristic(i.pos, goal, cache),
 			}
 			if !open.Has(i) {
 				path[i] = current
 				open.Add(n)
-			} else if ncost < open.scores[i].g {
+			} else if cost+1 < open.scores[i].g {
 				path[i] = current
+				open.Update(n)
+			}
+		}
+		k := IPos{
+			pos:  current.pos,
+			item: otherItem(ra, current.item),
+		}
+		if !closed.Has(k) {
+			n := &Node{
+				ipos: k,
+				g:    cost + 7,
+				h:    heuristic(current.pos, goal, cache),
+			}
+			if !open.Has(k) {
+				path[k] = current
+				open.Add(n)
+			} else if cost+7 < open.scores[k].g {
+				path[k] = current
 				open.Update(n)
 			}
 		}
