@@ -9,9 +9,6 @@ const (
 	puzzleDepth   = 9171
 	puzzleTargetX = 7
 	puzzleTargetY = 721
-	//puzzleDepth   = 510
-	//puzzleTargetX = 10
-	//puzzleTargetY = 10
 )
 
 type (
@@ -257,7 +254,7 @@ func astar(start, goal Pos, cache map[Pos]int) (int, int) {
 		h: heuristic(start, goal, cache),
 	})
 	for current, cost := open.Remove(); cost > -1; current, cost = open.Remove() {
-		if current.pos == goal {
+		if current.pos == goal && current.item == 1 {
 			routeCost := 0
 			for k, ok := path[current]; ok; k, ok = path[k] {
 				routeCost++
