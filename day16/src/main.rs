@@ -26,27 +26,6 @@ enum OpCode {
 }
 
 impl OpCode {
-    fn to_isize(&self) -> isize {
-        match self {
-            OpCode::Addr => 0,
-            OpCode::Addi => 1,
-            OpCode::Mulr => 2,
-            OpCode::Muli => 3,
-            OpCode::Banr => 4,
-            OpCode::Bani => 5,
-            OpCode::Borr => 6,
-            OpCode::Bori => 7,
-            OpCode::Setr => 8,
-            OpCode::Seti => 9,
-            OpCode::Gtir => 10,
-            OpCode::Gtri => 11,
-            OpCode::Gtrr => 12,
-            OpCode::Eqir => 13,
-            OpCode::Eqri => 14,
-            OpCode::Eqrr => 15,
-        }
-    }
-
     fn from_isize(opcode: isize) -> Option<OpCode> {
         match opcode {
             0 => Some(OpCode::Addr),
